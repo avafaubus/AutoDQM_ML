@@ -1,3 +1,5 @@
+#try 1 updated anomaly_detection_algorithm.py
+# seems to work w PCA but not autoencoder
 import os
 import pandas
 import numpy
@@ -14,7 +16,7 @@ from autodqm_ml.evaluation import pull_tool
 import logging
 logger = logging.getLogger(__name__)
 
-DEFAULT_COLUMNS = ["run_number", "label"] # columns which should always be read from input df
+DEFAULT_COLUMNS = ["run_number", "lumi", "year", "label"] # columns which should always be read from input df
 
 class AnomalyDetectionAlgorithm():
     """
@@ -99,11 +101,24 @@ class AnomalyDetectionAlgorithm():
 
         hist_integrals = []
         hist_reco_sizes = []
+
+        for histogram, histogram_info in self.histograms.items():
+            print(histogram)
+            print(awkward.type(df[histogram]))
+            print(awkward.to_numpy(df[histogram][0]).shape)
+
+    
         for histogram, histogram_info in self.histograms.items():
             # Normalize (if specified in histograms dict)
             if "normalize" in histogram_info.keys():
+                
                 if histogram_info["normalize"]:
-                    if histogram_info["n_dim"] == 2:
+                
+                    h = df[histogram]
+                    n_dim = len(awkward.to_numpy(h[0]).shape)
+                    print(f"{histogram}: detected {n_dim}D")
+                    print(">>> USING UPDATED anomaly_detection_algorithm.py <<<")
+                    if n_dim == 2:
                         #print(f"2D,{histogram}")
                         #print(len(df[histogram]),len(df[histogram][0]),len(df[histogram][0][0]))
                         logger.debug("[anomaly_detection_algorithm : load_data] Rebinning and normalising the 2D histogram '%s'" % histogram)
@@ -116,8 +131,15 @@ class AnomalyDetectionAlgorithm():
                         #logger.debug("[anomaly_detection_algorithm : load_data] Now calculating the mean of this 2D histogram and subtracting this from each individual rebinned and normalised histogram '%s'" % histogram)
                     else:
                         #print(f"1D,{histogram}")
+
+                        print("Histogram:", histogram)
+                        print("awkward type:", awkward.type(df[histogram]))
+                        print("first entry shape:", awkward.to_numpy(df[histogram][0]).shape)
+                        print("first entry length:", len(df[histogram][0]))
+
                         sum = awkward.sum(df[histogram], axis = -1)
                         hist_integral = sum
+
                         #logger.debug("[anomaly_detection_algorithm : load_data] Normalising the 1D histogram '%s' by the sum of total entries." % histogram)
                         df[histogram] = df[histogram] * (1. / sum)
                         logger.debug("[anomaly_detection_algorithm : load_data] Rebinning and normalising the 1D histogram '%s'" % histogram)
@@ -177,8 +199,8 @@ class AnomalyDetectionAlgorithm():
         desired_hists_for_study = list(histograms.keys())
         score_columns = [hist_name + suffix + tag for hist_name in desired_hists_for_study for suffix in ["_score_", "_scoreXnBins_"]]
         reco_columns = [hist_name + "_reco_" + tag for hist_name in desired_hists_for_study]
-        columns_to_keep = ['run_number', 'year', 'label'] + score_columns
-        standard_cols = ['run_number', 'year', 'label']
+        columns_to_keep = ['run_number', 'lumi', 'year', 'label'] + score_columns
+        standard_cols = ['run_number', 'lumi', 'year', 'label']
         filtered_fields = {field: self.df[field] for field in self.df.fields if field in columns_to_keep}
         chi2_filtered_fds = {field: chi2df[field] for field in chi2df.fields if field in standard_cols}
         modchi2_fields = {field: modchi2_df[field] for field in modchi2_df.fields if field in standard_cols}
