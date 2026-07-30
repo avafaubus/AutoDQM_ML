@@ -145,6 +145,11 @@ if args.input_file is None and "input_file" not in config.keys():
     message = "[train.py] An input file for training the ML algorithm was not supplied through CLI nor found in the json config file for the algorithm."
     logger.exception(message)
     raise RuntimeError()
+#added for debug:
+print("args.histograms =", args.histograms)
+print("type =", type(args.histograms))
+print("config['histograms'] =", config.get("histograms"))
+
 
 if args.histograms is None and "histograms" not in config.keys():
     message = "[train.py] A list of histograms to train on was not supplied through CLI nor found in the json config file for the algorithm."

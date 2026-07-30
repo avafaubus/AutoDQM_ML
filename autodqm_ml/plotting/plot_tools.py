@@ -1,3 +1,5 @@
+#plot_tools
+
 import matplotlib.pyplot as plt 
 import matplotlib.ticker
 import numpy as np 
@@ -53,11 +55,11 @@ def make_sse_plot(name, recos, save_name, **kwargs):
     plt.clf()
 
 
-def make_original_vs_reconstructed_plot(name, original, recos, mean_hist, run, save_name, hist_layout, **kwargs): 
+def make_original_vs_reconstructed_plot(name, original, recos, mean_hist, run, lumi, save_name, hist_layout, **kwargs): 
     n_dim = len(np.array(original).shape)
 
     if n_dim == 1:
-        make_original_vs_reconstructed_plot1d(name, original, recos, mean_hist, run, save_name, **kwargs)
+        make_original_vs_reconstructed_plot1d(name, original, recos, mean_hist, run, lumi, save_name, **kwargs)
 
     elif n_dim == 2:
         if hist_layout == 'flatten':
@@ -68,9 +70,9 @@ def make_original_vs_reconstructed_plot(name, original, recos, mean_hist, run, s
                           "reco" : awkward.flatten(reco["reco"], axis = -1),
                           "score" : reco["score"]
                 }
-            make_original_vs_reconstructed_plot1d(name, original_flat, recos_flat, run, save_name, **kwargs)     
+            make_original_vs_reconstructed_plot1d(name, original_flat, recos_flat, run, lumi, save_name, **kwargs)     
         elif hist_layout == '2d':
-            make_original_vs_reconstructed_plot2d(name, original, recos, run, save_name, **kwargs)
+            make_original_vs_reconstructed_plot2d(name, original, recos, run, lumi, save_name, **kwargs)
         else:
             message = "[plot_tools.py : make_original_vs_reconstructed_plot] Please specify a valid histogram layout option: flatten (default), 2d"
             logger.exception(message)
@@ -81,7 +83,7 @@ def make_original_vs_reconstructed_plot(name, original, recos, mean_hist, run, s
         logger.exception(message)
         raise RuntimeError()
 
-def make_original_vs_reconstructed_plot1d(name, original, recos, mean_hist, run, save_name, **kwargs):
+def make_original_vs_reconstructed_plot1d(name, original, recos, mean_hist, run, lumi, save_name, **kwargs):
     bins = "%s, 0, 1" % (len(original))
     x_label = name + " (a.u.)"
     y_label = "Fraction of events"
@@ -89,7 +91,7 @@ def make_original_vs_reconstructed_plot1d(name, original, recos, mean_hist, run,
     rat_lim = kwargs.get("rat_lim", [-0.02, 0.02])
     log_y = kwargs.get("log_y", False)
 
-    h_orig = Hist1D(original, bins = bins, label = "Run " + str(run) + " data")
+    h_orig = Hist1D(original, bins = bins, label=f"Run {run}, Lumi {lumi} data")
     h_orig._counts = original
 
     #h_mean = Hist1D(mean_hist, bins = bins, label = "Run " + str(run) + " mean")
@@ -178,7 +180,7 @@ def make_original_vs_reconstructed_plot1d(name, original, recos, mean_hist, run,
     #plt.savefig(save_name.replace(".pdf", ".png"))
     plt.clf()
 
-def make_original_vs_reconstructed_plot2d(name, original, recos, run, save_name, **kwargs):
+def make_original_vs_reconstructed_plot2d(name, original, recos, run, lumi, save_name, **kwargs):
     x_label = name + " (a.u.)"
     y_label = "Fraction of events"
     extent = (0, 1, 0, 1)
