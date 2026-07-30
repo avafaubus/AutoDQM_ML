@@ -17,7 +17,7 @@ from autodqm_ml.data_formats.histogram import Histogram
 from autodqm_ml.plotting.plot_tools import plot1D, plotMSESummary
 
 DEFAULT_OPT = {
-        "n_components" : 2
+        "n_components" : 3
 }
 
 class PCA(MLAlgorithm):
