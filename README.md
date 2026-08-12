@@ -1,17 +1,18 @@
 ## Description
 This repository contains tools relevant for training and evaluating anomaly detection algorithms on CMS DQM data, with updates made to allow for per-Lumisection data fetching, training, and model assessing. Additionally, data fetching has been updated with automatic metadata dictated by [OMS](https://cmsoms.cern.ch/cms/runs/lumisection?cms_run=397209&cms_run_sequence=GLOBAL-RUN).
 Core code is contained in `autodqm_ml`, core scripts are contained in `scripts` and some helpful examples are in `examples`.
-The following instructions have been adapted from the [AutoDQM-ML Readme](https://github.com/AutoDQM/AutoDQM_ML/blob/main/README.md) and [AutoDQM ML Introduction](https://autodqm.github.io/autodqm_ml.github.io/).
+The following instructions have been partially adapted from the [AutoDQM-ML Readme](https://github.com/AutoDQM/AutoDQM_ML/blob/main/README.md) and [AutoDQM ML Introduction](https://autodqm.github.io/autodqm_ml.github.io/).
 
 ## Required Certificates
 **1. VOMS Proxy**
 
 **2. OMS API Access**
+
 A registered CERN OpenID application is required to access data from OMS API, which the data fetching pipeline uses for filtering and assigning metadata to the relevant histograms.
 
 For instructions on setting up access to OMS API, see [the linked CMS OMS gitlab](https://gitlab.cern.ch/cmsoms/oms-api-client/-/blob/master/README.md?ref_type=heads).
 
-Once you have registered, make not of your key and secret, as this will be necessary data fetching.
+Once you have registered, make not of your key and secret, as this will be necessary for data fetching.
 
 ## Installation
 **1. Clone repository**
@@ -78,7 +79,7 @@ From the AutoDQM directory, run:
 ```
 python write_file_list.py
 ```
-Note: In the code, update input_directory to the file path to the directory you are interested in.
+Note: In the code, update input_directory to the file path for the directory you are interested in.
 
 This code will output batches of txt files that will be saved in ./AutoDQM_ML/autodqm_ml/data_prep/batches/
 
@@ -137,7 +138,7 @@ After training, you can use the assessing script (assess.py) to create useful pl
 ```
 python assess.py --input_file "/AutoDQM_ML/training_sets/labelled_addMLAlgos/your-training-set-name.parquet"
                  --output_dir "/AutoDQM_ML/training_sets/labelled_addMLAlgos/plots"
-                 --histograms "CSC/CSCOfflineMonitor/recHits/hRHGlobalm1,CSC/CSCOfflineMonitor/recHits/hRHGlobalm2,CSC/CSCOfflineMonitor/recHits/hRHGlobalm3,CSC/CSCOfflineMonitor/recHits/hRHGlobalm4,CSC/CSCOfflineMonitor/recHits/hRHGlobalp1,CSC/CSCOfflineMonitor/recHits/hRHGlobalp2,CSC/CSCOfflineMonitor/recHits/hRHGlobalp3,CSC/CSCOfflineMonitor/recHits/hRHGlobalp4"
+                 --histograms "path/to/histogram1, path/to/histogram2, path/to/histogram3" 
                  --hist_layout 2d
                  --algorithms "default_pca"
                  --debug
@@ -149,9 +150,17 @@ Optionally, you can add:
 ```
 Samples allows you to specify run, lumisectoin pairs you wish to plot. Plots_only will produce only plots, rather than all of the training metrics.
 
-For each histogram type provided, the assessing script provides a comprehensive list of anomaly scores for each run and lumisection, a summary plot providing Fraction of runs vs. Anomaly score, and plots of the reconstructed  
+For each histogram type provided, the assessing script provides a comprehensive list of anomaly scores for each run and lumisection, a summary plot providing Fraction of runs vs. Anomaly score, and plots comparing the reconstructions with the original data for the samples specified.
 
 How is anomaly score determined?
 
 ### 4. Main Changes
+
+i. Source root files are indexed to extract histograms for individual lumisections, not an entire run. (Note: see Expected Source Data Type below to see what data structure the data fetching expects).
+ii. Metadata is now assigned on a per-lumisection basis, with the status of a lumisection (anomalous, good, test) being directly pulled from OMS.
+iii. The data fetching, training, anomaly detection algorithm, and assessing scripts have been updated to expect lumisection-level metadata.
+iv. Added an option to only produce plots when running the assessing script.
+v. Added an option to specify a specific run and lumisection you want plots for. 
+
+### Expected Source Data Type
 
