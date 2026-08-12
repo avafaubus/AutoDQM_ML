@@ -1,15 +1,22 @@
-# AutoDQM_ML
-[![DOI](https://zenodo.org/badge/356313006.svg)](https://zenodo.org/badge/latestdoi/356313006)
-
 ## Description
-This repository contains tools relevant for training and evaluating anomaly detection algorithms on CMS DQM data.
+This repository contains tools relevant for training and evaluating anomaly detection algorithms on CMS DQM data, with updates made to allow for per-Lumisection data fetching, training, and model assessing. Additionally, data fetching has been updated with automatic metadata dictated by [OMS](https://cmsoms.cern.ch/cms/runs/lumisection?cms_run=397209&cms_run_sequence=GLOBAL-RUN).
 Core code is contained in `autodqm_ml`, core scripts are contained in `scripts` and some helpful examples are in `examples`.
-See the README of each subdirectory for more information on each.
+The following instructions have been adapted from the [AutoDQM-ML Readme](https://github.com/AutoDQM/AutoDQM_ML/blob/main/README.md) and [AutoDQM ML Introduction](https://autodqm.github.io/autodqm_ml.github.io/).
+
+## Required Certificates
+**1. VOMS Proxy**
+
+**2. OMS API Access**
+A registered CERN OpenID application is required to access data from OMS API, which the data fetching pipeline uses for filtering and assigning metadata to the relevant histograms.
+
+For instructions on setting up access to OMS API, see [the linked CMS OMS gitlab](https://gitlab.cern.ch/cmsoms/oms-api-client/-/blob/master/README.md?ref_type=heads).
+
+Once you have registered, make not of your key and secret, as this will be necessary data fetching.
 
 ## Installation
 **1. Clone repository**
 ```
-git clone https://github.com/AutoDQM/AutoDQM_ML.git 
+git clone https://github.com/avafaubus/AutoDQM_ML 
 cd AutoDQM_ML
 ```
 **2. Install dependencies**
@@ -32,14 +39,16 @@ conda env create -f environment.yml -p <path to install conda env>
 Some packages cannot be installed via `conda` or take too long and need to be installed with `pip` (after activating your `conda` env above):
 ```
 pip install yahist
-pip install tensorflow==2.5
+pip install tensorflow==2.11.0
+pip install omsapi
 ```
-
 Note: if you are running on `lxplus`, you may run into permissions errors, which may be fixed with:
 ```
 chmod 755 -R /afs/cern.ch/user/s/<your_user_name>/.conda
 ```
 and then rerunning the command to create the `conda` env. The resulting `conda env` can also be several GB in size, so it may also be advisable to specify the installation location in your work area if running on `lxplus`, i.e. running the `conda env create` command with `-p /afs/cern.ch/work/...`.
+
+Note: I recommend specify your EOS, not AFS, working directory because it has more available space.
 
 **3. Install autodqm-ml**
 
@@ -59,83 +68,90 @@ eval `scram unsetenv -sh`
 ```
 before attempting installation and each time before activating the `conda` environment.
 
-## Development Guidelines
+## Using the Tool
+### 1. Data Fetching
+Per-LS data fetching can be split into three steps: 
 
-### Documentation
-Please comment code following [this convention](https://sphinx-rtd-tutorial.readthedocs.io/en/latest/docstrings.html) from `sphinx`.
+i. Collection of the urls of relevant histograms.
+From the AutoDQM directory, run:
 
-In the future, `sphinx` can be used to automatically generate documentation pages for this project.
+```
+python write_file_list.py
+```
+Note: In the code, update input_directory to the file path to the directory you are interested in.
 
-### Logging
-Logging currently uses the Python [logging facility](https://docs.python.org/3/library/logging.html) together with [rich](https://github.com/willmcgugan/rich) (for pretty printing) to provide useful information printed both to the console and a log file (optional).
+This code will output batches of txt files that will be saved in ./AutoDQM_ML/autodqm_ml/data_prep/batches/
 
-Two levels of information can be printed: `INFO` and `DEBUG`. `INFO` level displays a subset of the information printed by `DEBUG` level.
+ii. Extraction of specified histograms into parquet batches with training metadata.
 
-A logger can be created in your script with
+Before beginning this step, make sure you have a registered CERN OpenID application with access to OMS API.
+
+In the /data_prep/condor_make_training directory,
+
 ```
-from autodqm_ml.utils import setup_logger
-logger = setup_logger(<level>, <log_file>)
+vim api_key.txt 
 ```
-And printouts can be added to the logger with:
+and update the txt file with your information: 
 ```
-logger.info(<message>) # printed out only in INFO level
-logger.debug(<message>) # printed out in both INFO and DEBUG levels
+my_app_id=<your_app_id>
+my_app_secret=<yourappsecret> 
+```
+Now, you can safely run:
+```
+condor_submit submit.sub 
+```
+This will follow the URLs indicated in batches in step i and process them into parquet shards. You can check the progress of the Condor job with: 
+```
+condor_q
+```
+iii. Merging of parquet shards into a complete training file.
+Once the parquet shards have been produced, run
+
+```
+python merge_parquets.py
+```
+This will produce a complete training set in /AutoDQM_ML/training_sets/.
+
+### 2. Training
+First, navigate:
+```
+cd /AutoDQM_ML/scripts
+```
+Then, run the training script with the desired algorithm and training set:
+```
+python train.py --input_file "/AutoDQM_ML/training_sets/your-training-set-name.parquet" 
+                --output_dir "/AutoDQM_ML/training_sets/labelled_addMLAlgos" 
+                --algorithm "pca" 
+                --tag "default_pca" 
+                --histograms "path/to/histogram1, path/to/histogram2, path/to/histogram3" 
+                --reco_assess_plots False
+                --debug
 ```
 
-It is only necessary to explicit create the logger with `setup_logger` once (likely in your main script). Submodules of `autodqm_ml` should initialize loggers as:
-```
-import logging
-logger = logging.getLogger(__name__)
-```
-If a logger has been created in your main script with `setup_logger`, the line `logger = logging.getLogger(__name__)` will automatically detect the existing logger and inherit its settings (print-out level and log file).
+Note: For CSCs, the histograms of interest are "CSC/CSCOfflineMonitor/recHits/hRHGlobalm1,CSC/CSCOfflineMonitor/recHits/hRHGlobalm2,CSC/CSCOfflineMonitor/recHits/hRHGlobalm3,CSC/CSCOfflineMonitor/recHits/hRHGlobalm4,CSC/CSCOfflineMonitor/recHits/hRHGlobalp1,CSC/CSCOfflineMonitor/recHits/hRHGlobalp2,CSC/CSCOfflineMonitor/recHits/hRHGlobalp3,CSC/CSCOfflineMonitor/recHits/hRHGlobalp4"
 
-Some good rules of thumb for logging:
-```
-logger.info # important & succint info that user should always see
-logger.debug # less important info, or info that will have many lines of print-out
-logger.warning # for something that may result in unintended behavior but isn't necessarily wrong
-logger.exception # for something where the user definitely made a mistake
-```
+Replace "pca" with "autoencoder" or "ae" and "default_pca" with "default_ae" to train an autoencoder model with the training set.
+### 3. Model Assessment
 
-### Contributing
-To contribute anything beyond a minor bug fix or modifying documentation/comments, first check out a new branch:
+After training, you can use the assessing script (assess.py) to create useful plots and metrics for evaluating the model(s). 
 ```
-git checkout -b my_new_improvement
+python assess.py --input_file "/AutoDQM_ML/training_sets/labelled_addMLAlgos/your-training-set-name.parquet"
+                 --output_dir "/AutoDQM_ML/training_sets/labelled_addMLAlgos/plots"
+                 --histograms "CSC/CSCOfflineMonitor/recHits/hRHGlobalm1,CSC/CSCOfflineMonitor/recHits/hRHGlobalm2,CSC/CSCOfflineMonitor/recHits/hRHGlobalm3,CSC/CSCOfflineMonitor/recHits/hRHGlobalm4,CSC/CSCOfflineMonitor/recHits/hRHGlobalp1,CSC/CSCOfflineMonitor/recHits/hRHGlobalp2,CSC/CSCOfflineMonitor/recHits/hRHGlobalp3,CSC/CSCOfflineMonitor/recHits/hRHGlobalp4"
+                 --hist_layout 2d
+                 --algorithms "default_pca"
+                 --debug
 ```
-Add your changes to this branch and push:
+Optionally, you can add:
 ```
-git push origin my_new_improvement
+                 --samples "run-number1:LS1,run-number2:LS2,run-number3:LS3"
+                 --plots_only
 ```
-Finally, when you think it's ready to be included in the main branch create a pull request (if you push your changes from the command line, Github should give you a link that you can click to automatically do this.) 
+Samples allows you to specify run, lumisectoin pairs you wish to plot. Plots_only will produce only plots, rather than all of the training metrics.
 
-If you think the changes you are making might benefit from discussion, create an "Issue" under the [Issues](https://github.com/AutoDQM/AutoDQM_ML/issues) tab.
+For each histogram type provided, the assessing script provides a comprehensive list of anomaly scores for each run and lumisection, a summary plot providing Fraction of runs vs. Anomaly score, and plots of the reconstructed  
 
-## Studies of Large Data using ML
+How is anomaly score determined?
 
-In order to obtain large data sets of SSE scores for histograms across a large number of runs (e.g. all data recorded in 2022), write up a data set config selecting the data file(s) from which to read the eos Prompt or Re-Reco files, and the set of runs of interest (with runs that are a priori known bad runs marked as such). Then select the histograms of interest using a histogram config file. Common use config files are found in the metadata directory. To fetch the data, run the command
-```
-python scripts/fetch_data.py --output_dir "data_fetched/pretraining" --contents "metadata/histogram_lists/myHistList.json" --datasets "metadata/dataset_lists/myDataSetList.json"
-```
-This may need to be run multiple times if using more than one data set e.g. Muon and SingleMuon (necessary for 2022 data) or Muon and JetMET (HLTPhysics is often a suitable replacement for these however) with a large number of (primarily 2D) histograms. The output .parquet file (named for each single data set or "allCollections" for more than one) is then fed to the training module, which is run for each algorithm to obtain a .csv file of SSE scores for all histograms and runs. These scores are calculated following training the algorithm on all the non-bad runs (as marked in the data-fetching stage), and are a Chi2-like measure of the difference between the original histogram and the histogram reconstructed by the algorithm according to the trained NN. This is done as follows:
-```
-python scripts/train.py --input_file "data_fetched/pretraining/myOutputFile.parquet" --output_dir "data_fetched/ae" --algorithm "autoencoder" --tag "myAutoencoder" --histograms "CSV-list-of-histos" --debug
-python scripts/train.py --input_file "data_fetched/pretraining/myOutputFile.parquet" --output_dir "data_fetched/pca" --algorithm "pca" --tag "myPCA" --histograms "CSV-list-of-histos" --debug
-```
-Here, the full set or subset of histograms as feature in your `myHistList.json` file is entered as an argument and the data set family (e.g. L1T, or a subdetector e.g. Muon). A quick way to obtain this list is to run the command
-```
-python scripts/json_to_string.py -i metadata/histogram_lists/myHistList.json -d DATA_SET_FAMILY
-```
-FOR INDIVIDUAL HISTOGRAM/RUN ORIGINAL V RECO STUDIES: If interested in using the `scripts/assess.py` macro to generate plots comparing original and reconstructed histogram distributions (i.e. the original assessment version of the repo), add the argument `--reco_assess_plots True` to the `scripts/train.py` stage to output a parquet file containing the relevant histogram information to do this. This is recommended for a subset of the runs fetched, and a subset of the histograms fetched, due to the exhaustive nature of generating the plots. A typical plotting assessment command for this would be
-```
-python scripts/assess.py --output_dir "assess_data_trained" --input_file "data_fetched/ae/HLTPhysics.parquet" --histograms "CSV-list-of-histos" --algorithms "myAutoencoder" --runs "35XXXX,36XXXX" --debug
-```
-Three CSV files are produced in the training step: all contain the full set of runs and histograms in an array, alongside the algorithm, year of data production, and the flag corresponding to the goodness of the run. The integral (occupancy of the input histogram pre-normalisation) and the size (number of bins in the rebinned histogram) of each histogram is contained in each CSV.
+### 4. Main Changes
 
-The CSV files vary based on the metric used to evaluate the difference between the original and the reconstructed histogram: one contains the SSE score, and the SSE score multiplied by the size of the histogram; one contains the Chi2 and maximum pull values (with varying tolerance) as well as the original and reconstructed histogram arrays; and one contains the modified Chi2 metric, where the bias of such a measure is minimised based on studies using a L1T data sets as featured in the AutoDQM paper (pending).
-
-The output CSV files from the training step are then processed to produce ROC curves, which measure the Mean number of Histogram Flags (per each algorithm) per good/bad run (the HF-ROC curve), and the Fraction of Runs with N histogram Flags (RF-ROC), where N = 1, 3, and 5 (although this is simple enough to change in the script). This can be done with the following script:
-```
-python scripts/sse_scores_to_roc.py --input_file "data_fetched/ae/myOutputFile_test_ae_sse_scores.csv" --output_dir "data_fetched/assessment/"
-python scripts/sse_scores_to_roc.py --input_file "data_fetched/pca/myOutputFile_test_pca_sse_scores.csv" --output_dir "data_fetched/assessment/"
-```
-The end result is two plots per algorithm, one with the HF-ROC curve, and the other with the RF-ROC curve. In cases where the scores are to be combined, there is a template combiner script `scripts/combine_scores.py` which can plot output using the template `scripts/plot_merged_df.py` script.
