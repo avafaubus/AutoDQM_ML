@@ -171,6 +171,5 @@ v. Added an option to specify a specific run and lumisection you want plots for.
 ### Possible Improvements
 1. Streamline data fetching by combining the three steps. To accomplish this and still be able to fetch large quantities of data, updates will need to be made to make the code more RAM efficient.
 2. Determine a minimum luminosity for the data to be included in the training set.
+3. Explore training loss as a way of evaluating model performance.
 
-### Expected Source Data Type
-The data fetching 
