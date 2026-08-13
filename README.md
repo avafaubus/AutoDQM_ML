@@ -6,6 +6,8 @@ The following instructions have been partially adapted from the [AutoDQM-ML Read
 ## Required Certificates
 **1. VOMS Proxy**
 
+You may need a valid VOMS proxy to access some of the necessary data for training, particularly if you are not using LXPLUS. See [this twiki](https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookStartingGrid) for more information.
+
 **2. OMS API Access**
 
 A registered CERN OpenID application is required to access data from OMS API, which the data fetching pipeline uses for filtering and assigning metadata to the relevant histograms.
@@ -148,19 +150,27 @@ Optionally, you can add:
                  --samples "run-number1:LS1,run-number2:LS2,run-number3:LS3"
                  --plots_only
 ```
-Samples allows you to specify run, lumisectoin pairs you wish to plot. Plots_only will produce only plots, rather than all of the training metrics.
+Samples allows you to specify run, lumisection pairs you wish to plot. Plots_only will produce only plots, rather than all of the training metrics.
 
 For each histogram type provided, the assessing script provides a comprehensive list of anomaly scores for each run and lumisection, a summary plot providing Fraction of runs vs. Anomaly score, and plots comparing the reconstructions with the original data for the samples specified.
 
-How is anomaly score determined?
+The anomaly score is the sum of squared errors between the original histogram data and the reconstruction produced by the PCA or autoencoder model. Sum of squared errors is given by SSE = $\sum_{i}(x_{i}-y_{i})^2$, where $x_{i}$ is the value of the original histogram bin and $y_{i}$ is the value of the reconstructed histogram bin. 
 
 ### 4. Main Changes
 
 i. Source root files are indexed to extract histograms for individual lumisections, not an entire run. (Note: see Expected Source Data Type below to see what data structure the data fetching expects).
+
 ii. Metadata is now assigned on a per-lumisection basis, with the status of a lumisection (anomalous, good, test) being directly pulled from OMS.
+
 iii. The data fetching, training, anomaly detection algorithm, and assessing scripts have been updated to expect lumisection-level metadata.
+
 iv. Added an option to only produce plots when running the assessing script.
+
 v. Added an option to specify a specific run and lumisection you want plots for. 
 
-### Expected Source Data Type
+### Possible Improvements
+1. Streamline data fetching by combining the three steps. To accomplish this and still be able to fetch large quantities of data, updates will need to be made to make the code more RAM efficient.
+2. Determine a minimum luminosity for the data to be included in the training set.
 
+### Expected Source Data Type
+The data fetching 
