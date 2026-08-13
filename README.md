@@ -160,7 +160,7 @@ For each histogram type provided, the assessing script provides a comprehensive 
 
 The anomaly score is the sum of squared errors between the original histogram data and the reconstruction produced by the PCA or autoencoder model. Sum of squared errors is given by SSE = $\sum_{i}(x_{i}-y_{i})^2$, where $x_{i}$ is the value of the original histogram bin and $y_{i}$ is the value of the reconstructed histogram bin. 
 
-### 4. Main Changes
+### Main Changes
 
 i. Source root files are indexed to extract histograms for individual lumisections, not an entire run. (Note: see Expected Source Data Type below to see what data structure the data fetching expects).
 
