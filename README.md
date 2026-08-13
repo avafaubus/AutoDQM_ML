@@ -115,6 +115,10 @@ python merge_parquets.py
 ```
 This will produce a complete training set in /AutoDQM_ML/training_sets/.
 
+### Note on Data Filtering
+
+During data fetching, each run and lumisection if found on [OMS](https://cmsoms.cern.ch/cms/runs/lumisection?cms_run=396701&cms_run_sequence=GLOBAL-RUN) and the physics, CMS active, beam present, and stable beam flags, as well as recorded luminosity are collected. Lumisections that have 0 recorded luminosity are removed from the training set. Lumisections with a FALSE flag in physics, CMS active, beam present, or stable beam are marked bad (1). Lumisections with a TRUE flag in physics, CMS active, beam present, and stable beam are randomly assigned good (0) or test (-1).
+
 ### 2. Training
 First, navigate:
 ```
@@ -173,3 +177,5 @@ v. Added an option to specify a specific run and lumisection you want plots for.
 2. Determine a minimum luminosity for the data to be included in the training set.
 3. Explore training loss as a way of evaluating model performance.
 
+
+This repository is maintained by Ava Faubus (af124@wellesley.edu).
