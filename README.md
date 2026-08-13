@@ -14,7 +14,7 @@ A registered CERN OpenID application is required to access data from OMS API, wh
 
 For instructions on setting up access to OMS API, see [the linked CMS OMS gitlab](https://gitlab.cern.ch/cmsoms/oms-api-client/-/blob/master/README.md?ref_type=heads).
 
-Once you have registered, make not of your key and secret, as this will be necessary for data fetching.
+Once you have registered, make note of your key and secret, as this will be necessary for data fetching.
 
 ## Installation
 **1. Clone repository**
